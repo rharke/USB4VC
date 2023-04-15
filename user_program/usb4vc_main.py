@@ -2,7 +2,6 @@ import os
 import sys
 import time
 import json
-import RPi.GPIO as GPIO
 import usb4vc_usb_scan
 import usb4vc_ui
 import subprocess 

@@ -6,7 +6,7 @@ import time
 import threading
 import usb4vc_oled
 from luma.core.render import canvas
-import RPi.GPIO as GPIO
+import usb4vc_gpio as GPIO
 import usb4vc_usb_scan
 import usb4vc_shared
 import usb4vc_show_ev

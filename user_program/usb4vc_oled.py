@@ -1,11 +1,22 @@
 from demo_opts import get_device
-from luma.core.render import canvas
+# from luma.core.render import canvas
 from PIL import ImageFont
 
 OLED_WIDTH = 128
 OLED_HEIGHT = 32
 
-my_arg = ['--display', 'ssd1306', '--interface', 'spi', '--spi-port', '0', '--spi-device', '1', '--gpio-reset', '6', '--gpio-data-command', '5', '--width', str(OLED_WIDTH), '--height', str(OLED_HEIGHT), '--spi-bus-speed', '2000000']
+my_arg = [
+    '--display', 'ssd1306',
+    '--interface', 'spi',
+    '--spi-port', '0',
+    '--spi-device', '1',
+    '--gpio-reset', '6',
+    '--gpio-data-command', '5',
+    '--width', str(OLED_WIDTH),
+    '--height', str(OLED_HEIGHT),
+    '--spi-bus-speed', '2000000',
+    '--gpio', 'usb4vc_gpio'
+]
 oled_device = get_device(my_arg)
 
 """

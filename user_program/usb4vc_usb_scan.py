@@ -5,7 +5,7 @@ import math
 import spidev
 import evdev
 import threading
-import RPi.GPIO as GPIO
+import usb4vc_gpio as GPIO
 import usb4vc_ui
 import usb4vc_shared
 import usb4vc_gamepads
