@@ -8,7 +8,7 @@ Thank you very much for getting USB4VC! Here is a short guide on getting started
 
 ## Pick a Raspberry Pi
 
-* USB4VC is designed for **Raspberry Pi 1/2/3/4 Model B**.
+* USB4VC is designed for **Raspberry Pi 1/2/3/4/5**.
 
 * Any RPi with a **40-pin header** *should* work, although **Model B/B+** is preferred.
 
@@ -70,7 +70,7 @@ Let's take a quick look:
 
 * DFU button is used for firmware updates.
 
-## Protocol Card Overview: Apple Lisa, Early Mac, and ADB
+## Protocol Card Overview: Lisa, Mac, and ADB
 
 ![Alt text](photos/applepc.png)
 
@@ -221,26 +221,6 @@ When the RPi is off, you can press `POWER ON` button to turn it back on.
 Want to design a custom case? [Click me](pcb/plates) for dimension drawings.
 
 ## Known Issues
-
-Here are a couple of bugs and issues that I am aware of, and the corresponding comments and remedies.
-
-#### Boot Time
-
-* Currently it takes about 17 seconds to boot with a decent SD card.
-
-* Would be great if it's faster.
-
-* Might look into disabling some services to speed it up.
-
-* [Let me know](#questions-or-comments) if you'd like to help!
-
-#### 15-Pin Gameport Power Backfeeding
-
-* If USB4VC is unpowered, turning on the PC seems to back-feed power through the 15-pin gameport via the digital potentiometer.
-
-* I haven't noticed any apparent damage, but it's probably not a good idea.
-
-* Make sure to power on USB4VC **BEFORE** the computer. (this is what you should do anyway)
 
 #### ADB Collision Resolution
 

@@ -1,10 +1,10 @@
-# USB4VC: USB Inputs on Retro Computers!
+# USB4VC: USB Inputs on Retro Computers
 
-[Get USB4VC!](https://www.tindie.com/products/dekuNukem/usb4vc-usb-inputs-on-retro-computers/) | [Official Discord](https://discord.gg/HAuuh3pAmB) | [Getting Started](getting_started.md) | [Table of Contents](#table-of-contents)
+[Get USB4VC](https://www.tindie.com/products/dekuNukem/usb4vc-usb-inputs-on-retro-computers/) | [Official Discord](https://discord.gg/HAuuh3pAmB) | [Getting Started](getting_started.md) | [Table of Contents](#table-of-contents)
 
 -----
 
-USB4VC is an **active protocol converter** that let you use **USB keyboard, mouse, and gamepads** on many different retro computers.
+USB4VC is an **active protocol converter** that let you use **USB keyboard, mouse, and gamepads** on vintage computers.
 
 ![Alt text](photos/header.jpeg)
 
@@ -45,7 +45,7 @@ Of course, more Protocol Cards are planned, and you can try [make your own](tech
 
 ## I Want One! / Get in Touch
 
-USB4VC is now available [on my Tindie store](https://www.tindie.com/products/dekuNukem/usb4vc-usb-inputs-on-retro-computers/) after being successfully funded [on Kickstarter!](https://www.kickstarter.com/projects/dekunukem/usb4vc-usb-inputs-on-retro-computers)!
+USB4VC is now available [on my Tindie store](https://www.tindie.com/products/dekuNukem/usb4vc-usb-inputs-on-retro-computers/) after a [successfull  Kickstarter.](https://www.kickstarter.com/projects/dekunukem/usb4vc-usb-inputs-on-retro-computers)
 
 **Questions or comments?** Ask in [official Discord](https://discord.gg/HAuuh3pAmB), raise a [Github issue](https://github.com/dekuNukem/USB4VC/issues), [Twitter DM](https://twitter.com/dekuNukem_), or email `dekunukem` `gmail.com`!
 
@@ -59,7 +59,7 @@ USB4VC is now available [on my Tindie store](https://www.tindie.com/products/dek
 
 ## Highlights
 
-* USB Keyboard/Mouse/Gamepads on Vintage Computers!
+* USB Keyboard/Mouse/Gamepads on Vintage Computers
 
 * Modular & Swappable Protocol Cards
 
@@ -77,7 +77,7 @@ USB4VC consists of two halves: **Baseboard** and swappable **Protocol Cards**.
 
 ![Alt text](photos/pcards.jpeg)
 
-Baseboard contains user buttons, OLED screen, and a Raspberry Pi. It processes USB input events, which are sent to Protocol Card.
+Baseboard has user buttons, OLED screen, and a Raspberry Pi. It processes USB input events, which are sent to Protocol Card.
 
 Each Protocol Card has a dedicated microcontroller and connectors for a specific platform.
 
