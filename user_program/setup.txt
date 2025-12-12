@@ -26,9 +26,8 @@ sudo apt upgrade
 
 -------------
 # use sudo -E to preserve environmental variables for python3
-sudo apt-get update
 
-sudo apt-get install i2c-tools
+sudo apt install i2c-tools
 sudo apt install stm32flash
 
 stm32flash -r PBFW_IBMPC_PBID1_V0_2_0.dfu -a 0x3b /dev/i2c-1
@@ -37,34 +36,29 @@ sudo apt install dfu-util
 sudo dfu-util --device ,0483:df11 -a 0 -D ~/usb4vc/firmware/PBFW_ADB_PBID2_V0_1_1.dfu
 
 -----
-sudo apt install evtest
-pip3 install evdev
 
 
 sudo apt install python3-pip
+sudo apt install evtest
 
-raspberry pi 5 uses a different GPIO chip, this is a compatibility package
+sudo pip3 install evdev --break-system-packages
 
-// no need
-sudo apt remove python3-rpi.gpio
-// no need?
-sudo pip3 install --break-system-packages rpi-lgpio
+
 
 cd ~;git clone https://github.com/atar-axis/xpadneo.git
 sudo apt-get install dkms raspberrypi-kernel-headers 
 
 https://github.com/atar-axis/xpadneo
---------------
 
-sudo mv /usr/lib/python3.11/EXTERNALLY-MANAGED /usr/lib/python3.11/EXTERNALLY-MANAGED.old
 -----
 
 Luma OLED driver
 
 https://luma-oled.readthedocs.io/en/latest/software.html
-sudo apt-get update
+
 sudo apt-get install python3 python3-pip python3-pil libjpeg-dev zlib1g-dev libfreetype6-dev liblcms2-dev libopenjp2-7 -y
-sudo -H pip3 install luma.oled
+
+sudo -H pip3 install luma.oled --break-system-packages
 
 -------------------
 remove CTRL+ALT+DELETE reboot
@@ -76,19 +70,9 @@ sudo systemctl daemon-reload
 
 run script on launch:
 
-MAKE SURE SERIAL LOGIN SHELL IS TURNED OFF
+crontab -e
 
-https://raspberrypi-guide.github.io/programming/run-script-on-boot
-
-sudo su
-
-
-sudo nano /etc/rc.local
-
-echo 1 > /sys/module/bluetooth/parameters/disable_ertm
-cd /home/pi/usb4vc/rpi_app; python3 keep_alive.py 2>&1 | tee -a /home/pi/usb4vc/usb4vc_debug_log.txt &
-
-kill -SIGINT pid
+@reboot cd /home/pi/usb4vc/rpi_app; /usr/bin/python3 keep_alive.py
 
 -----------
 xbox one bluetooth driver
@@ -236,3 +220,47 @@ QUIT: quit program
 
 U4 RF /home/pi/usb4vc_data/config.json
 U4 WF /home/pi/usb4vc_data/test.txt c3NoIHBpQDE5Mi4xNjguMS41Ng==
+
+-----------------
+
+sudo apt-get update
+sudo apt-get install python3 python3-pip python3-pil libjpeg-dev zlib1g-dev libfreetype6-dev liblcms2-dev libopenjp2-7 -y
+
+
+raspberry pi 5 uses a different GPIO chip, this is a compatibility package
+
+/*
+NO NEED
+	sudo apt remove python3-rpi.gpio
+	sudo pip3 install --break-system-packages rpi-lgpio
+	sudo pip3 install --break-system-packages evdev
+*/
+
+--------------
+
+// sudo mv /usr/lib/python3.11/EXTERNALLY-MANAGED /usr/lib/python3.11/EXTERNALLY-MANAGED.old
+
+------
+
+
+sudo nano /etc/rc.local
+
+echo 1 > /sys/module/bluetooth/parameters/disable_ertm
+cd /home/pi/usb4vc/rpi_app; python3 keep_alive.py 2>&1 | tee -a /home/pi/usb4vc/usb4vc_debug_log.txt &
+
+---------
+
+run script on launch:
+
+MAKE SURE SERIAL LOGIN SHELL IS TURNED OFF
+
+https://raspberrypi-guide.github.io/programming/run-script-on-boot
+
+sudo nano /etc/rc.local
+
+add: cd /home/pi/usb4vc/rpi_app; /usr/bin/python3 keep_alive.py &
+
+
+sudo chmod +x /etc/rc.local
+
+kill -SIGINT pid
