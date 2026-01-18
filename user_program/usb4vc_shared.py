@@ -625,3 +625,17 @@ gamepad_event_code_name_list = [
 	'BTN_TRIGGER_HAPPY38',
 	'BTN_TRIGGER_HAPPY39',
 	'BTN_TRIGGER_HAPPY40',]
+
+# Generate lookup for keyboard key codes (value -> name).
+#
+# This is separate from code_value_to_name_lookup because that map is geared for gamepad remapping.
+# It is missing many keys, but more importantly it contains some idiosyncracies that I don't want
+# to disturb lest it breaks existing gamepad profiles. (It seems to conflate BTN_MODE and
+# KEY_MODE, and I have no desire to try to untangle that).
+kb_code_value_to_name_lookup = {}
+for _name, (_value, _type) in code_name_to_value_lookup.items():
+	if _type == 'kb_key' and isinstance(_value, int):
+		# Use a set because a given key may have multiple names (e.g. KEY_HANGEUL vs KEY_HANGUEL).
+		if _value not in kb_code_value_to_name_lookup:
+			kb_code_value_to_name_lookup[_value] = set()
+		kb_code_value_to_name_lookup[_value].add(_name)
