@@ -8,6 +8,7 @@ import threading
 import RPi.GPIO as GPIO
 import usb4vc_ui
 from usb4vc_shared import *
+from usb4vc_shared import kb_code_value_to_name_lookup
 import usb4vc_gamepads
 
 """
@@ -282,6 +283,25 @@ def find_keycode_in_mapping(source_code, mapping_dict, usb_gamepad_type):
         target_info['code_neg'] = code_name_to_value_lookup.get(target_info['code_neg'])[0]
     target_info['type'] = lookup_result[1]
     return source_type, target_info
+
+def remap_keyboard_code(source_code, mapping_dict):
+    if not mapping_dict:
+        return source_code
+    source_names = kb_code_value_to_name_lookup.get(source_code)
+    if source_names is None:
+        return source_code
+    # A key could have multiple names; check for all of them.
+    # If it's mapped under different names, I guess the first one wins.
+    for source_name in source_names:
+        if source_name in mapping_dict:
+            target_info = mapping_dict[source_name]
+            target_name = target_info.get('code')
+            if target_name is None:
+                continue
+            lookup_result = code_name_to_value_lookup.get(target_name)
+            if lookup_result is not None:
+                return lookup_result[0]
+    return source_code
 
 def find_furthest_from_midpoint(this_set):
     curr_best = None
@@ -769,6 +789,12 @@ def raw_input_event_worker():
             this_device = opened_device_dict[key]
             this_id = this_device['id']
             try:
+                # struct input_event {
+                #     struct timeval time; // 8 bytes
+                #     unsigned short type; // 2 bytes
+                #     unsigned short code; // 2 bytes
+                #     unsigned int value;  // 4 bytes
+                # };
                 data = this_device['file'].read(16)
             except OSError:
                 print("Device disappeared:", this_device['name'])
@@ -791,7 +817,13 @@ def raw_input_event_worker():
             if data[0] == EV_KEY:
                 # keyboard keys
                 if 0x1 <= event_code <= 248 and event_code not in gamepad_buttons_as_kb_codes:
-                    xfer_when_not_busy(make_keyboard_spi_packet(data, this_id))
+                    kb_protocol = usb4vc_ui.get_keyboard_protocol()
+                    kb_mapping = kb_protocol.get('mapping') if kb_protocol else None
+                    remapped_code = remap_keyboard_code(event_code, kb_mapping)
+                    kb_data = list(data)
+                    kb_data[2] = remapped_code & 0xff         # (lsb) unsigned short code
+                    kb_data[3] = (remapped_code >> 8) & 0xff  # (msb)
+                    xfer_when_not_busy(make_keyboard_spi_packet(kb_data, this_id))
                 # Mouse buttons
                 elif 0x110 <= event_code <= 0x117:
                     mouse_status_dict[event_code] = data[4]

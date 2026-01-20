@@ -955,6 +955,9 @@ def ui_worker():
 def get_gamepad_protocol():
     return my_menu.current_gamepad_protocol
 
+def get_keyboard_protocol():
+    return my_menu.current_keyboard_protocol
+
 def get_joystick_curve():
     return joystick_curve_list[my_menu.current_joystick_curve_index]
 
