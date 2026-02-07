@@ -311,19 +311,21 @@ uint8_t adb_write_byte(uint8_t data)
       ADB_DATA_LOW();
       delay_us(ADB_CLK_35);
       ADB_DATA_HI();
+      delay_us(ADB_BUS_SETTLE_US);
       // if the line doesnt actually go high, then there has been a bus collision
       if(ADB_READ_DATA_PIN() != GPIO_PIN_SET) 
         return ADB_LINE_STATUS_COLLISION;
-      delay_us(ADB_CLK_65);
+      delay_us(ADB_CLK_65 - ADB_BUS_SETTLE_US);
     }
     else
     {
       ADB_DATA_LOW();
       delay_us(ADB_CLK_65);
       ADB_DATA_HI();
+      delay_us(ADB_BUS_SETTLE_US);
       if(ADB_READ_DATA_PIN() != GPIO_PIN_SET)
         return ADB_LINE_STATUS_COLLISION;
-      delay_us(ADB_CLK_35);
+      delay_us(ADB_CLK_35 - ADB_BUS_SETTLE_US);
     }
   }
   return ADB_OK;
