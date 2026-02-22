@@ -59,6 +59,8 @@
 #define KEY_RIGHTALT 100
 #define KEY_RIGHTMETA 126
 
+#define KEY_POWER 116
+
 #define ADB_CLK_35 34
 #define ADB_CLK_65 64
 #define EV_TO_ADB_LOOKUP_SIZE 186
@@ -74,6 +76,8 @@ void adb_release_lines(void);
 uint8_t adb_send_response_16b(uint16_t data);
 void send_srq(void);
 int32_t adb_wait_until_change(int32_t timeout_us);
+void adb_psw_assert(void);
+void adb_psw_release(void);
 
 extern uint8_t adb_mouse_current_addr, adb_kb_current_addr, adb_rw_in_progress;
 extern const uint8_t linux_ev_to_adb_lookup[EV_TO_ADB_LOOKUP_SIZE];
