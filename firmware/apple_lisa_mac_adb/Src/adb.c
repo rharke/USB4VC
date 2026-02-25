@@ -13,6 +13,8 @@ uint16_t adb_data_pin;
 uint16_t adb_kb_reg2 = 0xffff; // all key released, all LED off
 uint8_t adb_mouse_current_addr, adb_kb_current_addr, adb_rw_in_progress;
 uint8_t adb_kb_enabled, adb_mouse_enabled;
+uint8_t adb_kb_srq_enabled = 1, adb_mouse_srq_enabled = 1;
+uint8_t adb_kb_handler_id = 0x05; // AEK/AEKII/AppleDesign ISO
 
 #define ADB_PSW_HI() HAL_GPIO_WritePin(adb_psw_port, adb_psw_pin, GPIO_PIN_SET)
 #define ADB_PSW_LOW() HAL_GPIO_WritePin(adb_psw_port, adb_psw_pin, GPIO_PIN_RESET)
@@ -67,7 +69,7 @@ const uint8_t linux_ev_to_adb_lookup[EV_TO_ADB_LOOKUP_SIZE] =
   39, // EV40 KEY_APOSTROPHE
   50, // EV41 KEY_GRAVE
   56, // EV42 KEY_LEFTSHIFT
-  ADB_KEY_UNKNOWN, // EV43 KEY_BACKSLASH
+  0x2A, // EV43 KEY_BACKSLASH
   6, // EV44 KEY_Z
   7, // EV45 KEY_X
   8, // EV46 KEY_C
@@ -212,19 +214,25 @@ const uint8_t linux_ev_to_adb_lookup[EV_TO_ADB_LOOKUP_SIZE] =
   113, // EV185 KEY_F15
 };
 
-void adb_release_lines(void)
+void adb_release(void)
 {
   ADB_PSW_HI();
   ADB_DATA_HI();
+  next_busy_off = 0;
+  PCARD_BUSY_LOW();
 }
 
 void adb_reset(void)
 {
+  // Host-initiated ADB reset. Return registers to default state.
+  // Some devices are known to maintain the handler ID across a reset,
+  // but I don't think you're supposed to.
   adb_kb_current_addr = ADB_KB_DEFAULT_ADDR;
   adb_mouse_current_addr = ADB_MOUSE_DEFAULT_ADDR;
-  adb_release_lines();
-  next_busy_off = 0;
-  PCARD_BUSY_LOW();
+  adb_kb_srq_enabled = 1;
+  adb_mouse_srq_enabled = 1;
+  adb_kb_handler_id = 0x05;
+  adb_release();
 }
 
 void adb_init(GPIO_TypeDef* data_port, uint16_t data_pin, GPIO_TypeDef* psw_port, uint16_t psw_pin)
@@ -311,19 +319,21 @@ uint8_t adb_write_byte(uint8_t data)
       ADB_DATA_LOW();
       delay_us(ADB_CLK_35);
       ADB_DATA_HI();
+      delay_us(ADB_BUS_SETTLE_US);
       // if the line doesnt actually go high, then there has been a bus collision
       if(ADB_READ_DATA_PIN() != GPIO_PIN_SET) 
         return ADB_LINE_STATUS_COLLISION;
-      delay_us(ADB_CLK_65);
+      delay_us(ADB_CLK_65 - ADB_BUS_SETTLE_US);
     }
     else
     {
       ADB_DATA_LOW();
       delay_us(ADB_CLK_65);
       ADB_DATA_HI();
+      delay_us(ADB_BUS_SETTLE_US);
       if(ADB_READ_DATA_PIN() != GPIO_PIN_SET)
         return ADB_LINE_STATUS_COLLISION;
-      delay_us(ADB_CLK_35);
+      delay_us(ADB_CLK_35 - ADB_BUS_SETTLE_US);
     }
   }
   return ADB_OK;
@@ -405,7 +415,11 @@ uint8_t parse_adb_cmd(uint8_t data)
 
   if(cmd == ADB_CMD_TYPE_TALK && reg == 3 && addr == adb_mouse_current_addr && adb_mouse_enabled)
   {
-    uint16_t response = 0x6001; // 0110 0000 0000 0001, device handler 0x1, 100dps apple desktop bus mouse
+    // Base: 0100 0000 0000 0001, device handler 0x1, 100dps apple desktop bus mouse
+    // Bit 14 = 1 (no exceptional event), Bit 13 = SRQ enable state
+    uint16_t response = 0x4001;
+    if(adb_mouse_srq_enabled)
+      response |= ADB_REG3_SRQ_ENABLE;
     uint16_t rand_id = (rand() % 0xf) << 8;
     response |= rand_id;
     adb_send_response_16b(response);
@@ -413,7 +427,11 @@ uint8_t parse_adb_cmd(uint8_t data)
 
   if(cmd == ADB_CMD_TYPE_TALK && reg == 3 && addr == adb_kb_current_addr && adb_kb_enabled)
   {
-    uint16_t response = 0x6005; // 0110 0000 0000 0101, device handler 0x5, appledesign keyboard
+    // Bit 14 = 1 (no exceptional event), Bit 13 = SRQ enable state
+    // Bits 0-7 = device handler ID
+    uint16_t response = 0x4000 | adb_kb_handler_id;
+    if(adb_kb_srq_enabled)
+      response |= ADB_REG3_SRQ_ENABLE;
     uint16_t rand_id = (rand() % 0xf) << 8;
     response |= rand_id;
     adb_send_response_16b(response);
@@ -423,16 +441,50 @@ uint8_t parse_adb_cmd(uint8_t data)
   {
     uint16_t host_cmd;
     adb_listen_16b(&host_cmd);
-    if((host_cmd & ADB_CHANGE_ADDR) == ADB_CHANGE_ADDR)
-      adb_mouse_current_addr = (host_cmd & 0xf00) >> 8;
+    uint8_t listen_cmd = host_cmd & 0xff;
+
+    if(listen_cmd == ADB_LISTEN3_SELF_TEST || listen_cmd == ADB_LISTEN3_ACTIVATOR)
+    {
+      // Self test or activator relocation - not implemented
+    }
+    else if(listen_cmd == ADB_LISTEN3_CHANGE_ADDR)
+    {
+      adb_mouse_current_addr = (host_cmd >> 8) & 0xf;
+    }
+    else if(listen_cmd == ADB_LISTEN3_SET_FLAGS)
+    {
+      adb_mouse_current_addr = (host_cmd >> 8) & 0xf;
+      adb_mouse_srq_enabled = (host_cmd & ADB_REG3_SRQ_ENABLE) ? 1 : 0;
+    }
   }
 
   if(cmd == ADB_CMD_TYPE_LISTEN && reg == 3 && addr == adb_kb_current_addr)
   {
     uint16_t host_cmd;
     adb_listen_16b(&host_cmd);
-    if((host_cmd & ADB_CHANGE_ADDR) == ADB_CHANGE_ADDR)
-      adb_kb_current_addr = (host_cmd & 0xf00) >> 8;
+    uint8_t listen_cmd = host_cmd & 0xff;
+
+    if(listen_cmd == ADB_LISTEN3_SELF_TEST || listen_cmd == ADB_LISTEN3_ACTIVATOR)
+    {
+      // Self test or activator relocation - not implemented
+    }
+    else if(listen_cmd == ADB_LISTEN3_CHANGE_ADDR)
+    {
+      adb_kb_current_addr = (host_cmd >> 8) & 0xf;
+    }
+    else if(listen_cmd == ADB_LISTEN3_SET_FLAGS)
+    {
+      adb_kb_current_addr = (host_cmd >> 8) & 0xf;
+      adb_kb_srq_enabled = (host_cmd & ADB_REG3_SRQ_ENABLE) ? 1 : 0;
+    }
+    else
+    {
+      // Apple Extended Keyboard will accept handler ID 2, 3, or 5.
+      // Handler ID 3 enables extended right-side modifier codes.
+      // Handler 2 and 5 are functionally identical afaict.
+      if(listen_cmd == 0x02 || listen_cmd == 0x03 || listen_cmd == 0x05)
+        adb_kb_handler_id = listen_cmd;
+    }
   }
 
   if(cmd == ADB_CMD_TYPE_TALK && reg == 0 && addr == adb_mouse_current_addr)

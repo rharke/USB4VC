@@ -99,6 +99,11 @@ mouse_event latest_mouse_event;
 uint8_t spi_error_occured;
 uint8_t protocol_status_lookup[PROTOCOL_LOOKUP_SIZE];
 
+uint8_t capslock_counter;
+
+// Track which keys are currently pressed (for repopulating buffer after ADB reset)
+uint8_t key_state[EV_TO_ADB_LOOKUP_SIZE];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -237,6 +242,8 @@ void parse_spi_buf(uint8_t* spibuf)
       else
         adb_psw_release();
     }
+    if(keycode < EV_TO_ADB_LOOKUP_SIZE)
+      key_state[keycode] = (keyvalue != 0);
   }
   else if(spibuf[SPI_BUF_INDEX_MSG_TYPE] == SPI_MOSI_MSG_TYPE_INFO_REQUEST)
   {
@@ -436,7 +443,22 @@ void adb_mouse_update(void)
   adb_send_response_16b(response);
 }
 
-uint8_t capslock_counter;
+/*
+Repopulate keyboard buffer with currently pressed keys after ADB reset
+This is needed to trigger the "three-finger salute" on the Apple IIGS.
+*/
+void adb_kb_repopulate_from_key_state(void)
+{
+  kb_buf_reset(&my_kb_buf);
+  kb_buf_add(&my_kb_buf, KEY_CAPSLOCK, capslock_counter % 2);
+
+  for(uint8_t keycode = 0; keycode < EV_TO_ADB_LOOKUP_SIZE; keycode++)
+  {
+    if(key_state[keycode] && linux_ev_to_adb_lookup[keycode] != ADB_KEY_UNKNOWN)
+      kb_buf_add(&my_kb_buf, keycode, 1);
+  }
+}
+
 void adb_keyboard_update(void)
 {
   uint8_t buffered_code, buffered_value, adb_code;
@@ -448,6 +470,31 @@ void adb_keyboard_update(void)
     adb_code = linux_ev_to_adb_lookup[buffered_code];
     if(adb_code == ADB_KEY_UNKNOWN)
       goto adb_kb_end;
+    /*
+    Right-side modifier key handling:
+    Handler ID == 0x03: Use extended codes
+    Handler ID != 0x03: Use same codes as left-side keys
+    */
+    if(adb_kb_handler_id != 0x03)
+    {
+      if(adb_code == ADB_KEY_RIGHT_SHIFT)
+        adb_code = ADB_KEY_LEFT_SHIFT;
+      else if(adb_code == ADB_KEY_RIGHT_OPTION)
+        adb_code = ADB_KEY_LEFT_OPTION;
+      else if(adb_code == ADB_KEY_RIGHT_CONTROL)
+        adb_code = ADB_KEY_LEFT_CONTROL;
+    }
+    /*
+    Power/reset key handling:
+    - Send 0x7F7F when pressed (both key slots = 0x7F with key-down bit clear)
+    - Send 0xFFFF when released (both key slots = 0x7F with key-down bit set = 0xFF)
+    */
+    if(adb_code == ADB_KEY_POWER)
+    {
+      response = buffered_value ? 0x7F7F : 0xFFFF;
+      adb_send_response_16b(response);
+      goto adb_kb_end;
+    }
     /*
     adb mac keyboard capslock key seems to behave differently than PC keyboards
     On PC: Capslock down then up = Caps lock on, Capslock down then up again = Caps lock off
@@ -510,6 +557,13 @@ void adb_keyboard_update(void)
       else
         adb_kb_reg2 &= 0xfeff;
     }
+    if(buffered_code == KEY_POWER)
+    {
+      if(buffered_value == 0)
+        adb_kb_reg2 |= 0x1000;
+      else
+        adb_kb_reg2 &= 0xefff;
+    }
     // if(buffered_code == KEY_NUMLOCK)
     // {
     //   if(buffered_value == 0)
@@ -539,7 +593,7 @@ void run_adb(void)
 
   if(adb_kb_enabled == 0 && adb_mouse_enabled == 0)
   {
-    adb_reset();
+    adb_release();
     return;
   }
 
@@ -548,10 +602,11 @@ void run_adb(void)
   if(adb_status == ADB_LINE_STATUS_RESET)
   {
     adb_reset();
+    adb_kb_repopulate_from_key_state();
   }
   else if(adb_status != ADB_OK)
   {
-    adb_reset();
+    adb_release();
     return;
   }
 
@@ -571,7 +626,7 @@ void run_adb(void)
     mouse_srq = 0;
   }
 
-  if((kb_srq && adb_kb_enabled) || (mouse_srq && adb_mouse_enabled))
+  if((kb_srq && adb_kb_enabled && adb_kb_srq_enabled) || (mouse_srq && adb_mouse_enabled && adb_mouse_srq_enabled))
     send_srq();
   else
     adb_wait_until_change(ADB_DEFAULT_TIMEOUT_US);

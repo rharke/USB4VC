@@ -29,7 +29,14 @@
 #define ADB_CMD_TYPE_LISTEN 2
 #define ADB_CMD_TYPE_TALK 3
 
-#define ADB_CHANGE_ADDR 0xFE
+// Register 3 commands (lower 8 bits)
+#define ADB_LISTEN3_SELF_TEST   0xFF  // Perform self-test
+#define ADB_LISTEN3_CHANGE_ADDR 0xFE  // Change address only
+#define ADB_LISTEN3_ACTIVATOR   0xFD  // Activator relocation
+#define ADB_LISTEN3_SET_FLAGS   0x00  // Update address and flags
+
+// Register 3 flags
+#define ADB_REG3_SRQ_ENABLE 0x2000  // Bit 13: Service Request Enable
 
 // #define DEBUG0_HI() HAL_GPIO_WritePin(DEBUG0_GPIO_Port, DEBUG0_Pin, GPIO_PIN_SET)
 // #define DEBUG0_LOW() HAL_GPIO_WritePin(DEBUG0_GPIO_Port, DEBUG0_Pin, GPIO_PIN_RESET)
@@ -63,16 +70,28 @@
 
 #define ADB_CLK_35 34
 #define ADB_CLK_65 64
+#define ADB_BUS_SETTLE_US 1
 #define EV_TO_ADB_LOOKUP_SIZE 186
 #define ADB_DEFAULT_TIMEOUT_US 25000
 #define ADB_KEY_UNKNOWN 255
 #define ADB_KEY_CAPSLOCK 57
+#define ADB_KEY_POWER 127
+
+// Left-side modifier scan codes (standard)
+#define ADB_KEY_LEFT_CONTROL 54
+#define ADB_KEY_LEFT_SHIFT 56
+#define ADB_KEY_LEFT_OPTION 58
+
+// Right-side modifier scan codes (extended, only when handler ID == 0x03)
+#define ADB_KEY_RIGHT_SHIFT 123
+#define ADB_KEY_RIGHT_OPTION 124
+#define ADB_KEY_RIGHT_CONTROL 125
 
 void adb_init(GPIO_TypeDef* data_port, uint16_t data_pin, GPIO_TypeDef* psw_port, uint16_t psw_pin);
 uint8_t adb_recv_cmd(uint8_t* data);
 uint8_t parse_adb_cmd(uint8_t data);
 void adb_reset(void);
-void adb_release_lines(void);
+void adb_release(void);
 uint8_t adb_send_response_16b(uint16_t data);
 void send_srq(void);
 int32_t adb_wait_until_change(int32_t timeout_us);
@@ -83,6 +102,8 @@ extern uint8_t adb_mouse_current_addr, adb_kb_current_addr, adb_rw_in_progress;
 extern const uint8_t linux_ev_to_adb_lookup[EV_TO_ADB_LOOKUP_SIZE];
 extern uint16_t adb_kb_reg2;
 extern uint8_t adb_kb_enabled, adb_mouse_enabled;
+extern uint8_t adb_kb_srq_enabled, adb_mouse_srq_enabled;
+extern uint8_t adb_kb_handler_id;
 extern volatile uint32_t next_busy_off;
 #ifdef __cplusplus
 }
